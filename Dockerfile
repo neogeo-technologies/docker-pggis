@@ -15,6 +15,10 @@ MAINTAINER Vincent Picavet, vincent.picavet@oslandia.com
 # Set correct environment variables.
 ENV HOME /root
 
+# Set software versions
+ENV PG_VERSION 9.4
+ENV PGIS_VERSION 2.1.5
+
 # Regenerate SSH host keys. baseimage-docker does not contain any, so you
 # have to do that yourself. You may also comment out this instruction; the
 # init system will auto-generate one during boot.
@@ -26,8 +30,8 @@ CMD ["/sbin/my_init"]
 
 RUN apt-get update && apt-get install -y wget ca-certificates
 
-# Use APT postgresql repositories for 9.4 version
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ wheezy-pgdg main 9.4" > /etc/apt/sources.list.d/pgdg.list && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+# Use APT postgresql repositories for required version
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ wheezy-pgdg main ${PG_VERSION}" > /etc/apt/sources.list.d/pgdg.list && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
 
 # packages needed for compilation
 RUN apt-get update
@@ -35,7 +39,7 @@ RUN apt-get update
 RUN apt-get install -y autoconf build-essential cmake docbook-mathml docbook-xsl libboost-dev libboost-filesystem-dev libboost-system-dev libboost-iostreams-dev libboost-program-options-dev libboost-timer-dev libcgal-dev libcunit1-dev libgdal-dev libgeos++-dev libgeotiff-dev libgmp-dev libjson0-dev libjson-c-dev liblas-dev libmpfr-dev libopenscenegraph-dev libpq-dev libproj-dev libxml2-dev postgresql-server-dev-9.4 xsltproc git build-essential wget 
 
 # application packages
-RUN apt-get install -y postgresql-9.4
+RUN apt-get install -y postgresql-${PG_VERSION}
 
 # download and compile SFCGAL
 RUN git clone https://github.com/Oslandia/SFCGAL.git
@@ -44,12 +48,12 @@ RUN cd SFCGAL && cmake . && make -j3 && make install
 RUN rm -Rf SFCGAL
 
 # Download and compile PostGIS
-RUN wget http://download.osgeo.org/postgis/source/postgis-2.1.5.tar.gz
-RUN tar -xzf postgis-2.1.5.tar.gz
-RUN cd postgis-2.1.5 && ./configure --with-sfcgal=/usr/local/bin/sfcgal-config
-RUN cd postgis-2.1.5 && make -j3 && make install
+RUN wget http://download.osgeo.org/postgis/source/postgis-${PGIS_VERSION}.tar.gz
+RUN tar -xzf postgis-${PGIS_VERSION}.tar.gz
+RUN cd postgis-${PGIS_VERSION} && ./configure --with-sfcgal=/usr/local/bin/sfcgal-config
+RUN cd postgis-${PGIS_VERSION} && make -j3 && make install
 # cleanup
-RUN rm -Rf postgis-2.1.5.tar.gz postgis-2.1.5
+RUN rm -Rf postgis-${PGIS_VERSION}.tar.gz postgis-${PGIS_VERSION}
 
 # Download and compile pgrouting
 RUN git clone https://github.com/pgRouting/pgrouting.git &&\
@@ -98,7 +102,7 @@ ADD postgresql.sh /etc/service/postgresql/run
 
 # Adjust PostgreSQL configuration so that remote connections to the
 # database are possible. 
-RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/9.4/main/pg_hba.conf
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/${PG_VERSION}/main/pg_hba.conf
 
 # And add ``listen_addresses`` to ``/etc/postgresql/9.4/main/postgresql.conf``
 RUN echo "listen_addresses='*'" >> /etc/postgresql/9.4/main/postgresql.conf
